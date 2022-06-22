@@ -1,5 +1,8 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/controls/OrbitControls.js'
+import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/OBJLoader.js'
+import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/MTLLoader.js'
+import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/FBXLoader.js'
 
 class BoxScene {
     constructor() {
@@ -15,12 +18,16 @@ class BoxScene {
         this.texture = "./assets/textures/container-1.jpg"
         this.bgScene = "./assets/scenes/white-3.png"
         this.updateLighting = true
+        this.rotateSpeedValue = 0.005
        
         this.initComponent()
         this.changeColorEvent()
         this.changeTexturesEvent()
         this.changeSceneEvent()
         this.rotateEvent()
+        this.rotateSpeedEvent()
+        this.customTextureEvent()
+        this.customBackgroundEvent()
     }
 
     start() {
@@ -39,15 +46,22 @@ class BoxScene {
             depth: 1,
         })
 
+        this.createDoor()
+        // this.load3D()
+        // this.load3DObject(null, 'FBX')
+
         this.windowResizeHandler()
         this.animate()
     }
 
     initComponent() {
         this.rotateCheck = document.querySelector('#isRotating')
+        this.rotateSpeed = document.querySelector('#rotateSpeed')
         this.inputColor = document.querySelector('[data-color]')
         this.textures = document.querySelectorAll('.choose-textures')
         this.scenes = document.querySelectorAll('.choose-scenes')
+        this.customTexture = document.querySelector('#customTexture')
+        this.customBackground = document.querySelector('#customBackground')
     }
 
     setBackgroundScene() {
@@ -56,12 +70,37 @@ class BoxScene {
         this.scene.background = bgTexture
     }
 
+    customTextureEvent() {
+        this.customTexture.onchange = (e) => {
+            const file = e.target.files[0]
+            this.texture = URL.createObjectURL(file)
+            this.updateTexture()
+        }
+    }
+
+    customBackgroundEvent() {
+        this.customBackground.onchange = (e) => {
+            const file = e.target.files[0]
+            this.bgScene = URL.createObjectURL(file)
+            this.setBackgroundScene()
+        }
+    }
+
     rotateEvent() {
         this.rotateCheck.onchange = (e) => {
             if (e.target.checked) this.rotate = true
             else this.rotate = false
 
             this.renderer.renderLists.dispose()
+            this.updateLighting = false
+            this.animate()
+        }
+    }
+
+    rotateSpeedEvent() {
+        this.rotateSpeed.oninput = (e) => {
+            if (!this.rotateCheck.checked) return
+            this.rotateSpeedValue = Number(e.target.value)
             this.updateLighting = false
             this.animate()
         }
@@ -96,6 +135,15 @@ class BoxScene {
             this.updateColor()
         }
     }
+
+    createDoor() {
+        const material = new THREE.MeshNormalMaterial()
+        material.side = THREE.DoubleSide
+
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), material)
+        door.position.set(1, 0, 0.43)
+        this.scene.add(door)
+    }
     
     setRenderer() {
         this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -121,6 +169,43 @@ class BoxScene {
 
     setOrbitControls() {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement)
+    }
+
+    load3D() {
+        const mtlLoader = new MTLLoader()
+        const path = "assets/models/container-2/konteynrer.mtl"
+        // const path = "assets/models/container/12281_Container_v2_L2.mtl"
+        mtlLoader.load(path, (materials) => {
+            materials.preload()
+            this.load3DObject(materials)
+        })
+    }
+
+    load3DObject(materials = null, mode = 'OBJ') {
+        let loader
+        if (mode = 'OBJ') {
+            loader = new OBJLoader()
+        } else {
+            loader = new FBXLoader()
+        }
+
+        if (materials) {
+            loader.setMaterials(materials)
+        }
+
+        loader.load(
+            // 'assets/models/container-2/konteynrer.fbx',
+            'assets/models/container/12281_Container_v2_L2.obj',
+            (object) => {
+                this.scene.add(object)
+            },
+            (xhr) => {
+                console.log(( xhr.loaded / xhr.total * 100 ) + '% loaded')
+            },
+            (error) => {
+                console.log('An error happened')
+            }
+        )
     }
 
     createObject(geometryOptions, materialOptions) {
@@ -163,7 +248,7 @@ class BoxScene {
         if (this.rotate) {
             this.setRotation({ 
                 // x: 0.01, 
-                y: 0.005 
+                y: this.rotateSpeedValue
             })
         }
 
