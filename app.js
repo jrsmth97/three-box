@@ -3,6 +3,7 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/exampl
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/OBJLoader.js'
 import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/MTLLoader.js'
 import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/FBXLoader.js'
+import { Utils } from './src/utils.js'
 
 class BoxScene {
     constructor() {
@@ -10,24 +11,14 @@ class BoxScene {
         this.camera = new THREE.PerspectiveCamera(110, window.innerWidth / window.innerHeight, 0.1, 1000)
         this.renderer = new THREE.WebGLRenderer()
         this.object = new THREE.Mesh()
-        this.objectColor = 0x404040
         this.controls = null
         this.rotate = false
         this.material = null
         this.geometry = null
-        this.texture = "./assets/textures/container-1.jpg"
-        this.bgScene = "./assets/scenes/white-3.png"
-        this.updateLighting = true
-        this.rotateSpeedValue = 0.005
        
+        this.initVariable()
         this.initComponent()
-        this.changeColorEvent()
-        this.changeTexturesEvent()
-        this.changeSceneEvent()
-        this.rotateEvent()
-        this.rotateSpeedEvent()
-        this.customTextureEvent()
-        this.customBackgroundEvent()
+        this.initEventListener()
     }
 
     start() {
@@ -39,19 +30,25 @@ class BoxScene {
             
         this.setOrbitControls()
         this.setBackgroundScene()
-        this.createObject(
-        {
-            width: 3,
-            height: 1,
-            depth: 1,
-        })
+        this.createObject()
 
-        this.createDoor()
+        // this.createDoor()
         // this.load3D()
         // this.load3DObject(null, 'FBX')
 
         this.windowResizeHandler()
         this.animate()
+    }
+
+    initVariable() {
+        this.texture = "./assets/textures/container-1.jpg"
+        this.bgScene = "./assets/scenes/white-3.png"
+        this.updateLighting = true
+        this.rotateSpeedValue = 0.005
+        this.objectColor = 0x404040
+        this.objectWidth = 3
+        this.objectHeight = 1
+        this.objectDepth = 1
     }
 
     initComponent() {
@@ -62,12 +59,38 @@ class BoxScene {
         this.scenes = document.querySelectorAll('.choose-scenes')
         this.customTexture = document.querySelector('#customTexture')
         this.customBackground = document.querySelector('#customBackground')
+        this.objectWidthInput = document.querySelector('#objectWidth')
+        this.objectHeightInput = document.querySelector('#objectHeight')
+        this.objectDepthInput = document.querySelector('#objectDepth')
+    }
+
+    initEventListener() {
+        this.changeColorEvent()
+        this.changeTexturesEvent()
+        this.changeSceneEvent()
+        this.rotateEvent()
+        this.rotateSpeedEvent()
+        this.customTextureEvent()
+        this.customBackgroundEvent()
+        this.objectDimensionEvent()
     }
 
     setBackgroundScene() {
         const loader = new THREE.TextureLoader()
         const bgTexture = loader.load(this.bgScene)
         this.scene.background = bgTexture
+    }
+
+    objectDimensionEvent() {
+        [this.objectHeightInput, this.objectWidthInput, this.objectDepthInput].forEach(dimension => {
+            dimension.onkeyup = () => {
+                this.updateObjectDimension(
+                    this.objectWidthInput.value,
+                    this.objectHeightInput.value,
+                    this.objectDepthInput.value,
+                )
+            }
+        })
     }
 
     customTextureEvent() {
@@ -208,10 +231,13 @@ class BoxScene {
         )
     }
 
-    createObject(geometryOptions, materialOptions) {
-        const geoOptions = Object.values(geometryOptions)
-        this.geometry = new THREE.BoxGeometry(...geoOptions)
-        this.material = new THREE.MeshPhongMaterial(materialOptions)
+    createObject() {
+        let geoOptions = [3, this.objectDepth]
+        // let geoOptions = [this.objectWidth, this.objectHeight, this.objectDepth, 5/9, 16]
+
+        // this.geometry = new THREE.BoxGeometry(...geoOptions)
+        this.geometry = Utils.createBoxWithRoundedSide(...geoOptions)
+        this.material = new THREE.MeshPhongMaterial()
 
         const texture = new THREE.TextureLoader().load(this.texture)
         this.material.map = texture
@@ -225,6 +251,14 @@ class BoxScene {
 
         this.object.position.set(0, 0, 0)
         this.scene.add(this.object)
+    }
+
+    updateObjectDimension(width, height, depth) {
+        this.object.scale.set(
+            width / this.objectWidth,
+            height / this.objectHeight, 
+            depth / this.objectDepth, 
+        )
     }
 
     updateTexture() {
