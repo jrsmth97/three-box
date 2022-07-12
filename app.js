@@ -3,6 +3,10 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/exampl
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/OBJLoader.js'
 import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/MTLLoader.js'
 import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/FBXLoader.js'
+import { ColladaLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/ColladaLoader.js'
+import { TDSLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/TDSLoader.js'
+import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/STLLoader.js'
+import { PLYLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/PLYLoader.js'
 
 class BoxScene {
     constructor() {
@@ -15,10 +19,19 @@ class BoxScene {
         this.rotate = false
         this.material = null
         this.geometry = null
-        this.texture = "./assets/textures/container-1.jpg"
-        this.bgScene = "./assets/scenes/white-3.png"
+        this.texture = "assets/textures/container-1.jpg"
+        this.bgScene = "assets/scenes/white-3.png"
         this.updateLighting = true
         this.rotateSpeedValue = 0.005
+        this.object3d = null
+        // this.materialPath = 'assets/models/scifi-1/Intergalactic_Spaceship-(Wavefront).mtl'
+        // this.objPath = 'assets/models/scifi-1/Intergalactic_Spaceship-(Wavefront).obj'
+        // this.materialPath = 'assets/models/dragon-1/dae/Dragon_2.5.dae.mtl'
+        this.objPath = 'assets/models/dragon-1/ply/Dragon_2_5.ply'
+        this.scale3dSet = 0.2;
+        this.mixer = null
+        this.skin = null
+        this.clock = new THREE.Clock()
        
         this.initComponent()
         this.changeColorEvent()
@@ -39,16 +52,16 @@ class BoxScene {
             
         this.setOrbitControls()
         this.setBackgroundScene()
-        this.createObject(
-        {
-            width: 3,
-            height: 1,
-            depth: 1,
-        })
+        // this.createObject(
+        // {
+        //     width: 3,
+        //     height: 1,
+        //     depth: 1,
+        // })
 
-        this.createDoor()
-        // this.load3D()
-        // this.load3DObject(null, 'FBX')
+        // this.createDoor()
+        this.load3D()
+        // this.load3DObject(null)
 
         this.windowResizeHandler()
         this.animate()
@@ -173,20 +186,45 @@ class BoxScene {
 
     load3D() {
         const mtlLoader = new MTLLoader()
-        const path = "assets/models/container-2/konteynrer.mtl"
-        // const path = "assets/models/container/12281_Container_v2_L2.mtl"
-        mtlLoader.load(path, (materials) => {
-            materials.preload()
-            this.load3DObject(materials)
-        })
+        // const path = "assets/models/city-1/Center_City_Sci-Fi.mtl"
+        if (this.materialPath && this.materialPath != '') {
+            const path = this.materialPath
+            // const path = "assets/models/container/12281_Container_v2_L2.mtl"
+            mtlLoader.load(path, (materials) => {
+                materials.preload()
+                this.load3DObject(materials)
+            })
+        } else {
+            console.log('no material added')
+            this.load3DObject(null)
+        }
     }
 
-    load3DObject(materials = null, mode = 'OBJ') {
+    load3DObject(materials = null) {
         let loader
-        if (mode = 'OBJ') {
-            loader = new OBJLoader()
-        } else {
-            loader = new FBXLoader()
+
+        let fileExt = this.objPath.split('.')[1].toLowerCase();
+        switch (fileExt) {
+            case 'obj':
+                loader = new OBJLoader()
+            break
+            case 'fbx':
+                loader = new FBXLoader()
+            break
+            case 'dae':
+                loader = new ColladaLoader()
+            break
+            case '3ds':
+                loader = new TDSLoader()
+            break
+            case 'stl':
+                loader = new STLLoader()
+            break
+            case 'ply':
+                loader = new PLYLoader()
+            break
+            default: 
+                throw new Error('unsupported file type')
         }
 
         if (materials) {
@@ -195,20 +233,84 @@ class BoxScene {
 
         loader.load(
             // 'assets/models/container-2/konteynrer.fbx',
-            'assets/models/container/12281_Container_v2_L2.obj',
+            // 'assets/models/city-1/Center_City_Sci-Fi.obj',
+            this.objPath,
             (object) => {
-                this.scene.add(object)
+                switch (fileExt) {
+                    case 'dae':
+                        this.loadDae(object)
+                    break
+                    case 'stl':
+                        this.loadStlOrPly(object)
+                    break
+                    case '3ds':
+                        this.object = object
+                        this.scene.add(this.object)
+                    break
+                    case 'ply':
+                        console.log(object)
+                        this.loadStlOrPly(object)
+                    break
+                    // obj and fbx
+                    default:
+                        if (!materials && this.texture && this.texture != '') {
+                            console.log('custom texture')
+                            let texture = new THREE.TextureLoader().load(this.texture)
+                            this.object.traverse((child) => { 
+                                if (child instanceof THREE.Mesh) {
+                                    child.material.map = texture;
+                                }
+                            })
+                        }
+
+                        this.object = object
+                        this.object.scale.set(this.scale3dSet, this.scale3dSet, this.scale3dSet)
+                        this.scene.add(this.object)
+                }  
             },
             (xhr) => {
                 console.log(( xhr.loaded / xhr.total * 100 ) + '% loaded')
             },
             (error) => {
-                console.log('An error happened')
+                console.error(error)
             }
         )
     }
 
-    createObject(geometryOptions, materialOptions) {
+    loadDae(object) {
+        this.object = object.scene
+        this.skin = object.skins
+        let sceneAnimationClip = object.scene.animations[0]
+        // Create animation mixer and pass object to it
+        this.mixer = new THREE.AnimationMixer(this.object)
+    
+        // Create animation action and start it
+        this.mixer.clipAction(sceneAnimationClip).play()
+
+        this.object.scale.x = this.object.scale.y = this.object.scale.z = .2
+        this.object.updateMatrix()
+        this.scene.add(this.object)
+        this.animate()
+    }
+
+    loadStlOrPly(geometry) {
+        this.geometry = geometry
+        this.material = new THREE.MeshPhongMaterial()
+        const texture = new THREE.TextureLoader().load(this.texture)
+        this.material.map = texture
+
+        if (this.objectColor) {
+            this.material.color.set(this.objectColor)
+        }
+
+        this.object.receiveShadow = true
+        this.object = new THREE.Mesh(this.geometry, this.material)
+
+        this.object.position.set(0, 0, 0)
+        this.scene.add(this.object)
+    }
+
+    createObject(geometryOptions = null, materialOptions = {}) {
         const geoOptions = Object.values(geometryOptions)
         this.geometry = new THREE.BoxGeometry(...geoOptions)
         this.material = new THREE.MeshPhongMaterial(materialOptions)
@@ -243,6 +345,12 @@ class BoxScene {
     }
 
     animate() {
+        let delta = this.clock.getDelta()
+        if(this.mixer) {
+            // console.log(delta)
+            this.mixer.update(delta)
+        }
+    
         requestAnimationFrame(this.animate.bind(this))
     
         if (this.rotate) {
@@ -261,7 +369,7 @@ class BoxScene {
     }
 
     windowResizeHandler() {
-        window.addEventListener('resize', this.onWindowResize, false)
+        window.addEventListener('resize', this.onWindowResize(), false)
     }
 
     onWindowResize() {
