@@ -322,7 +322,7 @@ class Game{
     
 	animate() {
 		const game = this;
-		const dt = this.clock.getDelta();
+        const dt = this.clock.getDelta();
 		
 		requestAnimationFrame( function(){ game.animate(); } );
 		
@@ -335,7 +335,10 @@ class Game{
 			}
 		}
 		
-		if (this.player.move !== undefined) this.movePlayer(dt);
+		if (this.player.move !== undefined) {
+            this.movePlayer(dt);
+            // this.player.mixer.update(dt);
+        }
 		
 		if (this.player.cameras!=undefined && this.player.cameras.active!=undefined){
 			this.camera.position.lerp(this.player.cameras.active.getWorldPosition(new THREE.Vector3()), 0.05);
