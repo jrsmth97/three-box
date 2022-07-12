@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/loaders/FBXLoader.js'
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.129.0/examples/jsm/controls/OrbitControls.js'
 
 class Game{
 	constructor(){	
@@ -10,6 +11,7 @@ class Game{
 		this.camera;
 		this.scene;
 		this.renderer;
+        this.controls;
 		
 		this.container = document.createElement( 'div' );
 		this.container.style.height = '100%';
@@ -67,9 +69,12 @@ class Game{
 		// model
 		const loader = new FBXLoader();
 		const game = this;
-		
-		loader.load( `${this.assetsPath}FireFighter.fbx`, function ( object ) {
-
+		// const char = `${this.assetsPath}FireFighter.fbx` 
+		const char = `assets/models/dragon-1/fbx/Dragon_Baked_Actions_fbx_7.4_binary.fbx`
+		// const charTexture = `${game.assetsPath}SimplePeople_FireFighter_Brown.png`
+		const charTexture = `assets/models/dragon-1/fbx/textures/Dragon_ground_color.jpg`
+		loader.load( char, function ( object ) {
+            console.log(object)
 			object.mixer = new THREE.AnimationMixer( object );
 			game.player.mixer = object.mixer;
 			game.player.root = object.mixer.getRoot();
@@ -83,8 +88,9 @@ class Game{
 				}
 			} );
 			
+            object.scale.set(0.05, 0.05, 0.05);
             const tLoader = new THREE.TextureLoader();
-            tLoader.load(`${game.assetsPath}SimplePeople_FireFighter_Brown.png`, function(texture){
+            tLoader.load(charTexture, function(texture){
 				object.traverse( function ( child ) {
 					if ( child.isMesh ){
 						child.material.map = texture;
@@ -105,6 +111,8 @@ class Game{
 		this.renderer.setSize( window.innerWidth, window.innerHeight );
 		this.renderer.shadowMap.enabled = true;
 		this.container.appendChild( this.renderer.domElement );
+        //controls
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         
 		window.addEventListener( 'resize', function(){ game.onWindowResize(); }, false );
 	}
@@ -343,6 +351,7 @@ class Game{
             this.sun.target = this.player.object;
         }
         
+        this.controls.update();
 		this.renderer.render( this.scene, this.camera );
 
 	}
